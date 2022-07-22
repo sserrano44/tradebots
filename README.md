@@ -4,12 +4,16 @@
 Install a python enviroment manager like miniconda (https://docs.conda.io/en/latest/miniconda.html)
 Once installed make a dedicated enviroment
 
-`` $ conda create -n tradebots python=3.9 ``
-`` $ conda activate tradebots ``
+`` 
+$ conda create -n tradebots python=3.9
+
+$ conda activate tradebots 
+``
 
 ### Step 1 - Clone our this repo and clone ccxt
 
 `` $ git clone git@github.com:ripio/ccxt.git ``
+
 `` $ git clone git@github.com:sserrano44/tradebots.git ``
 
 ### Step 2 - Install ccxt
