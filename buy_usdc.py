@@ -19,7 +19,7 @@ import requests
 
 from utils import retry
 
-PAIR = "USDC_ARS"
+PAIR = "ARSUSDC"
 NORMAL_WAIT = 10
 WAIT_BETWEEN_TRADES = 30
 MIN_ORDER = 10
