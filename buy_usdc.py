@@ -12,6 +12,7 @@ import json
 import os
 import sys
 import time
+import logging 
 
 import ccxt
 from dotenv import load_dotenv
@@ -24,15 +25,15 @@ NORMAL_WAIT = 10
 WAIT_BETWEEN_TRADES = 30
 MIN_ORDER = 10
 
-@retry(times=5, exceptions=(ccxt.errors.RequestTimeout))
+@retry(times=5, exceptions=(ccxt.errors.RequestTimeout, ccxt.errors.DDoSProtection))
 def fetch_order_book(exchange, pair):
     return exchange.fetch_order_book(pair)
 
-@retry(times=5, exceptions=(ccxt.errors.RequestTimeout))
+@retry(times=5, exceptions=(ccxt.errors.RequestTimeout, ccxt.errors.DDoSProtection))
 def create_limit_buy_order(exchange, pair, chunk_to_buy, price_to_buy):
     return exchange.create_limit_buy_order(pair, chunk_to_buy, price_to_buy)
 
-@retry(times=5, exceptions=(ccxt.errors.RequestTimeout))
+@retry(times=5, exceptions=(ccxt.errors.RequestTimeout, ccxt.errors.DDoSProtection))
 def fetch_order(exchange, order_id, pair):
     return exchange.fetch_order(order_id, pair)
 
@@ -60,17 +61,20 @@ def run(API_KEY, amount_to_buy, limit, chunk):
 
         order = create_limit_buy_order(ripio, 'USDC/ARS', chunk_to_buy, price_to_buy)
         order_id = order['id']
-        # order_id = '8566f8fe-1aba-49c5-8a90-80acff8a5acb'
 
         while True:
             order = fetch_order(ripio, order_id, 'USDC/ARS')
             if order['status'] != "closed":
+                if order['status'] == 'pending creation':
+                    print('pending creation')
+                    time.sleep(NORMAL_WAIT)
+                    continue
                 try:
                     orderbook = fetch_order_book(ripio, PAIR)
                     top_price, top_amount = orderbook['asks'][0]
-                    print("current top %s @ %s" % (top_amount, top_price))
+                    print("status: %s current top %s @ %s" % (order['status'], top_amount, top_price))
                 except:
-                    pass
+                    logging.exception('exploto')
                 time.sleep(NORMAL_WAIT)
             else:
                 completed = order['amount']
