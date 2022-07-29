@@ -64,7 +64,10 @@ def run(API_KEY, amount_to_buy, limit, chunk):
 
         while True:
             order = fetch_order(ripio, order_id, PAIR)
-            if order['status'] != "closed":
+            if order['status'] == 'canceled':
+                print('Order %s got canceled !!!' % order_id)
+                break
+            elif order['status'] != "closed":
                 if order['status'] == 'pending creation':
                     print('pending creation')
                     time.sleep(NORMAL_WAIT)
