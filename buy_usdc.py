@@ -59,12 +59,15 @@ def run(API_KEY, amount_to_buy, limit, chunk):
             chunk_to_buy = chunk
             price_to_buy = limit
 
-        order = create_limit_buy_order(ripio, 'USDC/ARS', chunk_to_buy, price_to_buy)
+        order = create_limit_buy_order(ripio, PAIR, chunk_to_buy, price_to_buy)
         order_id = order['id']
 
         while True:
-            order = fetch_order(ripio, order_id, 'USDC/ARS')
-            if order['status'] != "closed":
+            order = fetch_order(ripio, order_id, PAIR)
+            if order['status'] == 'canceled':
+                print('Order %s got canceled !!!' % order_id)
+                break
+            elif order['status'] != "closed":
                 if order['status'] == 'pending creation':
                     print('pending creation')
                     time.sleep(NORMAL_WAIT)
