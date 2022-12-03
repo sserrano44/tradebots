@@ -22,6 +22,9 @@ ssl_context.verify_mode = ssl.CERT_NONE
 
 load_dotenv()
 
+MIN_ORDER_AMOUNT = 0.0001
+MAX_ORDER_AMOUNT = 0.01
+
 CONTEXT = {
     'orders': []
 }
@@ -41,6 +44,8 @@ def get_balance():
 
 def rebalance_buy(order_data):
     """ Rebalance BTC/ARS buy order by doing two trades one sell BTC/USDC and another USDC/ARS sell order """
+    print(f'rebalance_buy {order_data}')
+
     balance = get_balance()
     btc_amount = order_data['executed_amount']
     btc_usdc_sell = {
@@ -62,6 +67,7 @@ def rebalance_buy(order_data):
         return
 
     usdc_amount = r.json()['data']['total_value']
+
     # sell usdc for ars
     usdc_ars_sell = {
         'pair': 'USDC_ARS',
@@ -186,17 +192,15 @@ async def trader():
             continue
 
         BUY_PRICE = CONTEXT['USDC_ARS']['buy'][0]['price'] * CONTEXT['BTC_USDC']['buy'][0]['price']
-        print(f'BUY PRICE {BUY_PRICE}')
-
         SELL_PRICE = CONTEXT['USDC_ARS']['sell'][0]['price'] * CONTEXT['BTC_USDC']['sell'][0]['price']
-        print(f'SELL PRICE {SELL_PRICE}')
+        print(f'BUY PRICE {BUY_PRICE} - SELL PRICE {SELL_PRICE}')
 
         if CURRENT_BUY:
-            r = requests.get("https://api.ripiotrade.co/v4/orders", data={
-                'id': CURRENT_BUY['id']
-            }, headers={'Authorization': os.environ['API_KEY_V4']})        
+            r = requests.get(f"https://api.ripiotrade.co/v4/orders/{CURRENT_BUY['id']}", headers={'Authorization': os.environ['API_KEY_V4']})
+            # print(f'current buy order {r.text}')
 
             if r.status_code == 200 and r.json()['data']['executed_amount'] > 0:
+                print('rebalancing buy order')
                 rebalance_buy(r.json()['data'])
                 CURRENT_BUY = None
             elif calc_price_diff(CURRENT_BUY['price'],BUY_PRICE) > 0.005:
@@ -208,11 +212,11 @@ async def trader():
                 CURRENT_BUY = None
 
         if CURRENT_SELL:
-            r = requests.get("https://api.ripiotrade.co/v4/orders", data={
-                'id': CURRENT_SELL['id']
-            }, headers={'Authorization': os.environ['API_KEY_V4']})
+            r = requests.get(f"https://api.ripiotrade.co/v4/orders/{CURRENT_SELL['id']}", headers={'Authorization': os.environ['API_KEY_V4']})
+            # print(f'current sell {r.text}')
 
             if r.status_code == 200 and r.json()['data']['executed_amount'] > 0:
+                print('rebalancing sell order')
                 rebalance_sell(r.json()['data'])
                 CURRENT_SELL = None
             elif calc_price_diff(CURRENT_SELL['price'],SELL_PRICE) > 0.005:
@@ -225,12 +229,12 @@ async def trader():
 
         balance = get_balance()
 
-        if not CURRENT_BUY and (balance['ARS'] / BUY_PRICE) > 0.0001:
+        if not CURRENT_BUY and (balance['ARS'] / BUY_PRICE) > MIN_ORDER_AMOUNT:
             r = requests.post("https://api.ripiotrade.co/v4/orders", data={
                 "pair": "BTC_ARS",
                 "side": "buy",
                 "type": "limit",
-                "amount": min(0.01, balance['ARS'] / BUY_PRICE),
+                "amount": min(MAX_ORDER_AMOUNT, balance['ARS'] / BUY_PRICE),
                 "price": BUY_PRICE
             }, headers={'Authorization': os.environ['API_KEY_V4']})
 
@@ -243,12 +247,12 @@ async def trader():
                 }
                 CONTEXT['orders'].append(rdata['data']['id'])
 
-        if not CURRENT_SELL and balance['BTC'] > 0.0001:
+        if not CURRENT_SELL and balance['BTC'] > MIN_ORDER_AMOUNT:
             r = requests.post("https://api.ripiotrade.co/v4/orders", data={
                 "pair": "BTC_ARS",
                 "side": "sell",
                 "type": "limit",
-                "amount": min(0.01, balance['BTC']),
+                "amount": min(MAX_ORDER_AMOUNT, balance['BTC']),
                 "price": SELL_PRICE
             }, headers={'Authorization': os.environ['API_KEY_V4']})
 
