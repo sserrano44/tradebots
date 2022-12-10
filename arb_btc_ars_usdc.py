@@ -61,6 +61,7 @@ def rebalance_buy(order_data):
         logging.error(f"Error placing BTC_USDC sell order: {r.text}")
         return
 
+    time.sleep(1)
     r = requests.get(f"https://api.ripiotrade.co/v4/orders/{r.json()['data']['id']}", headers={'Authorization': os.environ['API_KEY_V4']})
     if r.status_code != 200:
         logging.error(f"Error getting BTC_USDC sell order: {r.text}")
@@ -105,8 +106,8 @@ def rebalance_sell(order_data):
         logging.error(f"Error placing USDC_ARS buy order: {r.text}")
         return
 
+    time.sleep(1)
     r = requests.get(f"https://api.ripiotrade.co/v4/orders/{r.json()['data']['id']}", headers={'Authorization': os.environ['API_KEY_V4']})
-    
     if r.status_code != 200:
         logging.error(f"Error getting USDC_ARS buy order: {r.text}")
         return
@@ -114,6 +115,9 @@ def rebalance_sell(order_data):
     usdc_amount = r.json()['data']['executed_amount']
     btc_usdc_price = CONTEXT['BTC_USDC']['sell'][0]['price']
     btc_amount = usdc_amount / btc_usdc_price
+
+    print(r.json()['data'])
+    print(usdc_amount, btc_usdc_price, btc_amount)
 
     btc_usdc_buy = {
         'pair': 'BTC_USDC',
@@ -141,8 +145,8 @@ async def listen_orderboook(pair):
     data = r.json()
 
     CONTEXT[pair] = {
-        'buy': data['data']['buying'],
-        'sell': data['data']['selling']
+        'bids': data['data']['bids'],
+        'asks': data['data']['asks']
     }
 
     while RUNNING:
@@ -160,17 +164,18 @@ async def listen_orderboook(pair):
 
                 while RUNNING:
                     msg = json.loads(await ws.recv())
-                    print(f'got updated {pair}')
-                    CONTEXT[pair] = msg['body']
+                    # print(f'got updated {pair}')
+                    if 'body' in msg:
+                        CONTEXT[pair] = msg['body']
         except asyncio.exceptions.CancelledError:
-            return
+            raise
         except:
             # log all exceptions
             logging.exception("webscoket error")
             await asyncio.sleep(5)
 
 async def trader():
-    global CONTEXT, CURRENT_BUY, CURRENT_SELL
+    global CONTEXT, CURRENT_BUY, CURRENT_SELL, RUNNING
 
     await asyncio.sleep(2)
 
@@ -191,8 +196,8 @@ async def trader():
             await asyncio.sleep(5)
             continue
 
-        BUY_PRICE = CONTEXT['USDC_ARS']['buy'][0]['price'] * CONTEXT['BTC_USDC']['buy'][0]['price']
-        SELL_PRICE = CONTEXT['USDC_ARS']['sell'][0]['price'] * CONTEXT['BTC_USDC']['sell'][0]['price']
+        BUY_PRICE = CONTEXT['USDC_ARS']['bids'][0]['price'] * CONTEXT['BTC_USDC']['bids'][0]['price'] * 0.9975
+        SELL_PRICE = CONTEXT['USDC_ARS']['asks'][0]['price'] * CONTEXT['BTC_USDC']['asks'][0]['price'] * 1.0025
         print(f'BUY PRICE {BUY_PRICE} - SELL PRICE {SELL_PRICE}')
 
         if CURRENT_BUY:
