@@ -90,7 +90,7 @@ def rebalance_sell(order_data):
     balance = get_balance()
 
     ars_amount = order_data['total_value']
-    usd_ars_price = CONTEXT['USDC_ARS']['sell'][0]['price']
+    usd_ars_price = CONTEXT['USDC_ARS']['asks'][0]['price']
     usdc_amount = min(ars_amount, balance['ARS']) / usd_ars_price
 
     usdc_ars_buy = {
@@ -113,7 +113,7 @@ def rebalance_sell(order_data):
         return
     
     usdc_amount = r.json()['data']['executed_amount']
-    btc_usdc_price = CONTEXT['BTC_USDC']['sell'][0]['price']
+    btc_usdc_price = CONTEXT['BTC_USDC']['asks'][0]['price']
     btc_amount = usdc_amount / btc_usdc_price
 
     print(r.json()['data'])
